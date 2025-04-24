@@ -86,7 +86,7 @@ def detail(id):
     data_user = {
         'nik' : user_detail.nik,
         'name' : user_detail.name,
-        'password' : user_detail.password,
+        # 'password' : user_detail.password,
         'status' : user_detail.status,
         'created_at' : user_detail.created_at,
         'updated_at' : user_detail.updated_at
@@ -102,17 +102,21 @@ def create():
     if not data or 'name' not in data or 'nik' not in data or 'status' not in data or 'created_at' not in data or 'password'  not in data:
         jsonify({'error':'Data tidak lengkap!'}), 400
 
+    name = data["name"]
+    nik = data["nik"]
+    status = data["status"]
+    password = data["password"]
     # membuat objek user baru
     new_user = Users (
-        name = data['name'],
-        nik = data['nik'],
-        status = data['status'],
-        password = data['password'],
-        created_at = data['created_at'],
-        updated_at = data['updated_at']
+        name = name,
+        nik = nik,
+        status = status,
+        # password = data['password'],
+        created_at = datetime.datetime
     )
 
     # menyimpan objek ke database
+    new_user.setPassword(password)
     db.session.add(new_user)
     db.session.commit()
 
@@ -179,7 +183,7 @@ def update(id):
     if 'password' in data:
         users.password = data['password']
     if 'updated_at' in data:
-        users.updated_at = data['updated_at']
+        users.updated_at = datetime.now()
 
     db.session.commit()
 
@@ -222,11 +226,21 @@ def login():
         password = request.form.get('password')
         
         user = Users.query.filter_by(nik=nik).first()
+        pass_key = Users.query.filter_by(password=password).first()
+
+        if not nik and not password:
+            return response.badRequest([],"NIK dan Password tidak boleh kosong")
+
+        if not nik:
+            return response.badRequest([],"NIK tidak boleh kosong")
+        
+        if not password:
+            return response.badRequest([],"Password tidak boleh kosong")
 
         if not user:
             return response.badRequest([], "NIK tidak terdaftar")
         
-        if not user.password:
+        if not pass_key:
             return response.badRequest([], "Password salah!")
         
         data = singleObject(user)

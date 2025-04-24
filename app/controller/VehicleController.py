@@ -1,6 +1,7 @@
 from app import app, db, response
 from app.model.vehicles import Vehicles
 from flask import jsonify, request, abort
+from datetime import datetime
 
 def index():
     try:
@@ -10,7 +11,9 @@ def index():
             new_data = {
                 'id' : vehicle.id,
                 'code' : vehicle.code,
-                'images' : vehicle.images,
+                'nopol' : vehicle.nopol,
+                'type' : vehicle.vehicle_type.tipe,
+                'merk' : vehicle.vehicle_type.merk
             }
             data.append(new_data)
 
@@ -26,9 +29,11 @@ def detail(id):
 
     data_vehicle = {
         'code' : data_detail.code,
-        'type_id' : data_detail.vehicle_type.tipe,
+        'type_id' : data_detail.type_id,
+        'type' : data_detail.vehicle_type.tipe,
+        'merk' : data_detail.vehicle_type.merk,
         'nopol' : data_detail.nopol,
-        'images' : data_detail.images,
+        # 'images' : data_detail.images,
         'created_by' : data_detail.creator.name,
         'created_at' : data_detail.created_at,
         'updated_at' : data_detail.updated_at
@@ -39,59 +44,82 @@ def detail(id):
 def create():
     data = request.get_json()
 
-    if not data or not all(key in data for key in ['code','type_id','created_by','nopol', 'images']):
-        return jsonify({'error' : 'Invalid data'}), 400
+    if not data or not all(key in data for key in ['code','type_id','created_by','nopol']):
+        return jsonify({'error' : 'Mohon lengkapi data terlebih dahulu!'}), 400
     
+    code = data.get('code')
+    type_id = data.get('type_id')
+    nopol = data.get('nopol')
+    created_by = data.get('created_by')
+    created_at = datetime.now()
+
+    # duplicate handler
+    existing_code = Vehicles.query.filter_by(code=code).first()
+    existing_nopol = Vehicles.query.filter_by(nopol=nopol).first()
+    if existing_code:
+        return jsonify({'error' : 'Kode Kendaraan Sudah ada!'}), 400
+    
+    if existing_nopol:
+        return jsonify({'error' : 'Nomor Polisi Kendaraan Sudah ada!'}), 400
+
     data_vehicle = Vehicles(
-        code = data['code'],
-        type_id = data['type_id'],
-        nopol = data['nopol'],
-        images = data['images'],
-        created_by = data['created_by'],
-        created_at = data['created_at'],
-        updated_at = data['updated_at']
+        code = code,
+        type_id = type_id,
+        nopol = nopol,
+        created_by = created_by,
+        created_at = created_at
     )
 
     db.session.add(data_vehicle)
     db.session.commit()
 
     return jsonify({
-        'code' : data_vehicle.code,
-        'type_id' : data_vehicle.type_id,
-        'nopol' : data_vehicle.nopol,
-        'images' : data_vehicle.images,
-        'created_by' : data_vehicle.created_by,
-        'created_at' : data_vehicle.created_at,
-        'updated_at' : data_vehicle.updated_at
+        'success' : 'Data berhasil ditambahkan!',
+        'data' : {
+            'code' : data_vehicle.code,
+            'type' : data_vehicle.vehicle_type.tipe,
+            'merk' : data_vehicle.vehicle_type.merk,
+            'nopol' : data_vehicle.nopol,
+            'created_by' : data_vehicle.created_by,
+            'created_at' : data_vehicle.created_at
+        }
     })
 
 def update(id):
     vehicles = Vehicles.query.get(id)
 
     if not vehicles:
-        abort(404)
+        return jsonify({"message" : "Data tidak ditemukan"}), 404
     
     data = request.get_json()
 
-    if not data or not all(key in data for key in ['code','type_id','created_by','nopol', 'images']):
-        return jsonify({'error' : 'lengkapi data dulu!!'}), 400
+    if not data:
+        return jsonify({'error' : 'Mohon lengkapi data dulu!!'}), 400
     
-    vehicles.code = data['code']
-    vehicles.type_id = data['type_id']
-    vehicles.nopol = data['nopol']
-    vehicles.images = data['images']
-    vehicles.created_by = data['created_by']
-    vehicles.updated_at = data['updated_at']
+    if 'code' in data:
+        vehicles.code = data['code']    
+
+    if 'type_id' in data:
+        vehicles.type_id = data['type_id']
+    if 'nopol' in data:
+        vehicles.nopol = data['nopol']
+    # vehicles.images = data['images']
+    if 'created_by' in data:
+        vehicles.created_by = data['created_by']
+    vehicles.updated_at = datetime.now()
 
     db.session.commit()
 
     return jsonify({
-        'code' : vehicles.code,
-        'type_id' : vehicles.type_id,
-        'nopol' : vehicles.nopol,
-        'images' : vehicles.images,
-        'created_by' : vehicles.creator.name,
-        'updated_at' : vehicles.updated_at
+        'success' : 'Data Berhasil Diperbarui...',
+        'data' : {
+            'code' : vehicles.code,
+            'type_id' : vehicles.vehicle_type.tipe,
+            'nopol' : vehicles.nopol,
+            # 'images' : vehicles.images,
+            'created_by' : vehicles.creator.name,
+            'updated_at' : vehicles.updated_at
+        }
     }), 200
 
 def delete(id):

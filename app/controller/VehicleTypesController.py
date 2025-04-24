@@ -1,5 +1,6 @@
 from app import app, db, response
 from app.model.vehicletypes import VehicleTypes
+from datetime import datetime
 
 from flask import Flask, request, jsonify, abort
 
@@ -9,15 +10,31 @@ def create():
     if not data or not 'tipe' in data or not 'cc' in data or not 'ratio' in data or not 'merk' in data:
         return jsonify({'error' : 'data harus lengkap!'}), 400
     
+    ratio = data['ratio']
+
+    if ratio >= 11:
+        type_encode = 6
+    elif ratio >= 9 and ratio <= 10:
+        type_encode = 5
+    elif ratio >= 7 and ratio <= 8:
+        type_encode = 4
+    elif ratio > 5 and ratio <= 6:
+        type_encode = 3
+    elif ratio >= 4.5 and ratio <= 5:
+        type_encode = 2
+    elif ratio < 4.5:
+        type_encode = 1
+    
+
     new_type = VehicleTypes(
         tipe = data['tipe'],
         cc = data['cc'],
-        ratio = data['ratio'],
+        ratio = ratio,
         merk = data['merk'],
-        type_encode = data['type_encode'],
+        type_encode = type_encode,
         created_by = data['created_by'],
-        created_at = data['created_at'],
-        updated_at = data['updated_at']
+        created_at = datetime.now(),
+        updated_at = "null"
     )
 
     db.session.add(new_type)
@@ -29,9 +46,7 @@ def create():
         'ratio' : new_type.ratio,
         'merk' : new_type.merk,
         'type_encode' : new_type.type_encode,
-        'created_by' : new_type.created_by,
-        'created_at' : new_type.created_at,
-        'updated_at' : new_type.updated_at
+        'created_by' : new_type.created_by
     })
 
 def index():
@@ -59,32 +74,48 @@ def update(id):
     vehicle_types = VehicleTypes.query.get(id)
 
     if not  vehicle_types:
-        abort(404)
+        return jsonify({"message" : "Data tidak ditemukan!"})
 
     data = request.get_json()
 
     if not data:
-        return jsonify({"error": "Data mohon lengkapi dulu pak..."})
+        return jsonify({"error": "Data mohon lengkapi dulu..."})
     
     if "tipe" in data:
         vehicle_types.tipe =  data["tipe"]
     if "cc" in data:
         vehicle_types.cc =  data["cc"]
     if "ratio" in data:
-        vehicle_types.ratio =  data["ratio"]
+        ratio = data['ratio']
+        vehicle_types.ratio =  ratio
+
+        if ratio >= 11:
+            type_encode = 6
+        elif ratio >= 9 and ratio <= 10:
+            type_encode = 5
+        elif ratio >= 7 and ratio <= 8:
+            type_encode = 4
+        elif ratio > 5 and ratio <= 6:
+            type_encode = 3
+        elif ratio >= 4.5 and ratio <= 5:
+            type_encode = 2
+        elif ratio < 4.5:
+            type_encode = 1
+
+        vehicle_types.type_encode =  type_encode
+
     if "merk" in data:
         vehicle_types.merk =  data["merk"]
     if "created_by" in data:
         vehicle_types.created_by =  data["created_by"]
-    if "type_encode" in data:
-        vehicle_types.type_encode =  data["type_encode"]
-    if "updated_at" in data:
-        vehicle_types.updated_at =  data["updated_at"]
+        
+    
+    vehicle_types.updated_at =  datetime.now()
     
     db.session.commit()
 
     return jsonify({
-        "message" : "Data berhasil diupdate"
+        "message" : "Data berhasil diperbarui"
     })
 
 def delete(id):

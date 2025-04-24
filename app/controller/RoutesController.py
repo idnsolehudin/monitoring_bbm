@@ -25,7 +25,7 @@ def index():
 def detail(id):
     routes_detail = Routes.query.get(id)
     if not routes_detail:
-        abort(404)
+        return jsonify({'message':'Data tidak ditemukan'})
 
     data_routes = {
         'id': routes_detail.id,
