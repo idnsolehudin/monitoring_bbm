@@ -135,7 +135,7 @@ def current_reports():
         }
         data.append(new_data)
 
-        return jsonify(data)
+    return jsonify(data)
     
 
 def create():
@@ -163,6 +163,7 @@ def create():
 
     prediction = model.predict(features)
 
+    created_at = datetime.now()
 
     data = Reports(
        shipment = reports["shipment"],
@@ -177,7 +178,7 @@ def create():
         status = prediction[0],
         receipt = reports["receipt"],
         created_by = reports["created_by"],
-        created_at = reports["created_at"]
+        created_at = created_at
     )
 
     db.session.add(data)
@@ -213,21 +214,20 @@ def update(id):
     prediction = model.predict(features)
     
     if 'shipment' in data:
-        reports.nik = data['shipment']
+        reports.shipment = data['shipment']
     if 'route_id' in data:
-        reports.name = data['route_id']
+        reports.route_id = data['route_id']
     if 'vehicle_id' in data:
-        reports.status = data['vehicle_id']
+        reports.vehicle_id = data['vehicle_id']
     if 'first_km' in data:
-        reports.password = data['first_km']
+        reports.first_km = data['first_km']
     if 'last_km' in data:
-        reports.password = data['last_km']
+        reports.last_km = data['last_km']
     if 'volume' in data:
-        reports.password = data['volume']
+        reports.volume = data['volume']
     if 'receipt' in data:
-        reports.password = data['receipt']
-    if 'updated_at' in data:    
-        reports.updated_at = data['updated_at']
+        reports.receipt = data['receipt']  
+    reports.updated_at = datetime.now()
     reports.distance = distance
     reports.ratio = ratio
     reports.status = prediction[0]

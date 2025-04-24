@@ -2,6 +2,7 @@ from app.model.routes import Routes
 from app.model.users import Users
 from app import response, app, db
 from flask import request, jsonify, abort
+from datetime import datetime
 
 def index():
     try:
@@ -51,8 +52,7 @@ def create():
         description=data['description'],
         distance=data['distance'],
         created_id=data['created_id'],
-        created_at = data['created_at'],
-        updated_at = data['updated_at']
+        created_at = datetime.now()
     )
 
     db.session.add(new_route)
@@ -79,7 +79,7 @@ def update(id):
     routes.description = data['description'],
     routes.distance = data['distance'],
     routes.created_id = data['created_id'],
-    routes.updated_at = data['updated_at']
+    routes.updated_at = datetime.now()
 
     db.session.commit()
 
