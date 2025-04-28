@@ -18,6 +18,7 @@ def index():
         new_data = {
             'shipment' : report.shipment,
             'route_id' : report.route_id,
+            'route' : report.route.description,
             'vehicle_id' : report.vehicle.code,
             'spbu_code' : report.spbu_code,
             'first_km' : report.first_km,
@@ -43,7 +44,9 @@ def detail(id):
     data_reports = {
         'shipment' : report.shipment,
         'route_id' : report.route_id,
-        'vehicle_id' : report.vehicle.code,
+        'route' : report.route.description,
+        'vehicle_id' : report.vehicle_id,
+        'vehicle' : report.vehicle.code,
         'spbu_code' : report.spbu_code,
         'first_km' : report.first_km,
         'last_km' : report.last_km,
@@ -120,6 +123,7 @@ def current_reports():
         new_data = {
             'shipment' : report.shipment,
             'route_id' : report.route_id,
+            'route' : report.route,
             'vehicle_id' : report.vehicle.code,
             'spbu_code' : report.spbu_code,
             'first_km' : report.first_km,

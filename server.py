@@ -5,9 +5,15 @@ from app.controller import RoutesController
 from app.controller import VehicleTypesController
 from app.controller import VehicleController
 from app.controller import ReportsController
-from flask import jsonify, request
+from flask import jsonify, request, Flask, send_from_directory
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
+from config import Config
+
+# from flask_cors import CORS
+
+# app = Flask(__name__)
+# CORS(app)
 
 
 
@@ -129,6 +135,9 @@ def filteredreports():
 def uploads():
     return UserController.upload()
 
+@app.route('/files/<path:renamefile>')
+def uploaded_file(renamefile):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], renamefile)
 
 if __name__ == '__main__':
     app.run(debug=True)

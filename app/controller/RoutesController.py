@@ -14,7 +14,7 @@ def index():
                 'code': route.code,
                 'description': route.description,
                 'distance': route.distance,
-                'created_id': route.creator.name,  # Mengambil username dari relasi
+                'created_by': route.creator.name,  # Mengambil username dari relasi
                 'created_at': route.created_at, 
                 'updated_at': route.updated_at  
             }
@@ -33,7 +33,7 @@ def detail(id):
         'code': routes_detail.code,
         'description': routes_detail.description,
         'distance': routes_detail.distance,
-        'created_id': routes_detail.creator.name,  # Mengambil username dari relasi
+        'created_by': routes_detail.creator.name,  # Mengambil username dari relasi
         'created_at': routes_detail.created_at, 
         'updated_at': routes_detail.updated_at  
     }
@@ -62,9 +62,8 @@ def create():
         'code': new_route.code,
         'description': new_route.description,
         'distance': new_route.distance,
-        'created_id': new_route.creator.name,
-        'created_at': new_route.created_at,
-        'updated_at': new_route.updated_at
+        'created_by': new_route.creator.name,
+        'created_at': new_route.created_at
     })
 
 def update(id):
@@ -73,7 +72,7 @@ def update(id):
     data = request.get_json()
 
     if not data or not all(key in data for key in['code', 'description','distance','created_id']):
-        return jsonify({"error": "lengkapi dulu datanya, boss.."}), 400
+        return jsonify({"error": "Data Harus Lengkap!"}), 400
     
     routes.code = data['code'],
     routes.description = data['description'],
@@ -87,7 +86,7 @@ def update(id):
         'code': routes.code,
         'description': routes.description,
         'distance': routes.distance,
-        'created_id': routes.creator.name,
+        'created_by': routes.creator.name,
         'updated_at': routes.updated_at
     })
 

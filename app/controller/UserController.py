@@ -8,6 +8,14 @@ from flask_jwt_extended import *
 import datetime
 import uuid
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from config import Config
+from flask import Flask
+
+load_dotenv()
+
+app = Flask(__name__)
+app.config.from_object(Config)
 
 def upload():
     try:
@@ -23,7 +31,7 @@ def upload():
         if file and uploadconfig.allowed_file(file.filename):
             uid = uuid.uuid4()
             filename = secure_filename(file.filename)
-            renamefile = "flask"+str(uid)+filename
+            renamefile = "img"+str(uid)+filename
 
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
 
@@ -95,73 +103,63 @@ def detail(id):
     return jsonify(data_user)
 
 def create():
-    # mengambil data JSON dari request
-    data = request.get_json()
+    try:
+        # mengambil data JSON dari request
+        # data = request.get_json()
 
-    # memeriksa kelengkapan data
-    if not data or 'name' not in data or 'nik' not in data or 'status' not in data or 'created_at' not in data or 'password'  not in data:
-        jsonify({'error':'Data tidak lengkap!'}), 400
+        name = request.form.get("name")
+        nik = request.form.get("nik")
+        status = request.form.get("status")
+        password = request.form.get("password")
+        file = request.files.get('file')
 
-    name = data["name"]
-    nik = data["nik"]
-    status = data["status"]
-    password = data["password"]
-    # membuat objek user baru
-    new_user = Users (
-        name = name,
-        nik = nik,
-        status = status,
-        # password = data['password'],
-        created_at = datetime.datetime
-    )
+        # memeriksa kelengkapan data
+        if not name or not nik or not status or  not password:
+            return jsonify({'error':'Data tidak lengkap!'}), 400
+        
+        existing_nik = Users.query.filter_by(nik=nik).first()
+        if existing_nik:
+            return jsonify({"error": "NIK sudah ada!"})
 
-    # menyimpan objek ke database
-    new_user.setPassword(password)
-    db.session.add(new_user)
-    db.session.commit()
+        renamefile = None
+        
+        if file and uploadconfig.allowed_file(file.filename):
+            uid = uuid.uuid4()
+            filename = secure_filename(file.filename)
+            renamefile = "usr"+str(uid)+filename
 
-    return jsonify({
-        'name' : new_user.name,
-        'nik' : new_user.nik,
-        'status' : new_user.status,
-        'password' : new_user.password,
-        'created_at' : new_user.created_at,
-        'updated_at' : new_user.updated_at
-    }), 201
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
 
-# def login():
-#     """
-#     Endpoint untuk login pengguna.
-#     Menerima NIK dan password dalam format JSON.
-#     """
-#     try:
-#         # Ambil semua pengguna dari database
-#         users = Users.query.all()
+        
+        # membuat objek user baru
+        new_user = Users (
+            name = name,
+            nik = nik,
+            status = status,
+            image = renamefile,
+            # password = data['password'],
+            created_at = datetime.datetime.now(),
+            updated_at = "Null"
+        )
+        # menyimpan objek ke database
+        new_user.setPassword(password)
+        db.session.add(new_user)
+        db.session.commit()
 
-#         # Ambil data dari request body
-#         data = request.get_json()
+        return jsonify({
+            'success' : 'Data Berhasil Disimpan...',
+            'data' : {
+                'name' : new_user.name,
+                'nik' : new_user.nik,
+                'status' : new_user.status,
+                'created_at' : new_user.created_at
+            }
+        }), 201
 
-#         if not data or "nik" not in data or "password" not in data:
-#             return jsonify({"success": False, "message": "NIK dan Password wajib diisi"}), 400
-
-#         nik = data.get("nik")
-#         password = data.get("password")
-
-#         # Validasi tipe data
-#         if not isinstance(nik, int) or not isinstance(password, str):
-#             return jsonify({"success": False, "message": "Format data salah. NIK harus integer dan Password string"}), 400
-
-#         # Periksa data dengan "database" pengguna
-#         for user in users:
-#             if user.nik == nik and user.password == password:
-#                 return jsonify({"success": True, "message": "Login berhasil"}), 200
-
-#         # Jika tidak ditemukan
-#         return jsonify({"success": False, "message": "NIK atau Password salah"}), 401
-
-#     except Exception as e:
-#         print("Error:", str(e))  # Debug log
-#         return jsonify({"success": False, "message": f"Terjadi kesalahan: {str(e)}"}), 500
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)}), 500 
+    
 
 def update(id):
     users = Users.query.get(id)
@@ -169,31 +167,43 @@ def update(id):
     if not users:
         return jsonify({"message" : "Data tidak ditemukan"})
     
-    data = request.get_json()
+    nik = request.form.get("nik")
+    name = request.form.get("name")
+    status = request.form.get("status")
+    password = request.form.get("password")
+    file = request.files.get("file")
 
-    if not data:
+    if not nik and not name and not status and not password and not file:
         return jsonify({"error": "lengkapi data terlebih dahulu"})
     
-    if 'nik' in data:
-        users.nik = data['nik']
-    if 'name' in data:
-        users.name = data['name']
-    if 'status' in data:
-        users.status = data['status']
-    if 'password' in data:
-        users.password = data['password']
-    if 'updated_at' in data:
-        users.updated_at = datetime.now()
+    if nik:
+        users.nik = nik
+    if name:
+        users.name = name
+    if status:
+        users.status = status
+    if password:
+        users.password = password
+    if file and uploadconfig.allowed_file(file.filename):
+        uid = uuid.uuid4()
+        filename = secure_filename(file.filename)
+        renamefile = "usr"+str(uid)+filename
+
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
+        users.image = renamefile
+
+    users.updated_at = datetime.datetime.now()
 
     db.session.commit()
 
     return jsonify({
-        'message': 'Data berhasil diupdate',
+        'message': 'Data berhasil diperbarui',
         'data' : 
                 {
                     'name' : users.name,
                     'nik' : users.nik,
                     'status' : users.status,
+                    'images' : users.image,
                     'updated_at' : users.updated_at
                 }
     }),200

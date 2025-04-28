@@ -8,10 +8,10 @@ class Users(db.Model):
     nik = db.Column(db.Integer, index=True, unique=True, nullable=False)
     name = db.Column(db.String(50), nullable=False)
     status = db.Column(db.String(50), nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
     created_at =db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
-    image = db.Column(db.String(50))
+    image = db.Column(db.String(255))
 
     routes = db.relationship('Routes', backref='creator', lazy=True)
     vehicle_types = db.relationship('VehicleTypes', backref='creator', lazy=True)

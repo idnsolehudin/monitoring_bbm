@@ -10,6 +10,8 @@ class Routes(db.Model):
     created_id = db.Column(db.Integer, db.ForeignKey(Users.id))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    reports = db.relationship('Reports', backref="route", lazy=True)
     
 
     def __repr__(self):
