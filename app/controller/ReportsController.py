@@ -1,7 +1,7 @@
 from app.model.reports import Reports
 from app.model.vehicletypes import VehicleTypes
 from app.model.vehicles import Vehicles
-from app import db, response
+from app import app,db, response,uploadconfig
 import pickle
 import numpy as np
 import os
@@ -9,6 +9,10 @@ from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask import request, jsonify, abort
 from sqlalchemy import cast, Date
+from config import Config
+from werkzeug.utils import secure_filename
+import uuid
+
 
 
 def index():
@@ -16,6 +20,7 @@ def index():
     data = []
     for report in reports:
         new_data = {
+            'id' : report.id,
             'shipment' : report.shipment,
             'route_id' : report.route_id,
             'route' : report.route.description,
@@ -42,6 +47,7 @@ def detail(id):
         return jsonify({'message': 'Report not found'}), 404
  
     data_reports = {
+        'id' : report.id,
         'shipment' : report.shipment,
         'route_id' : report.route_id,
         'route' : report.route.description,
@@ -90,6 +96,7 @@ def filtered_reports():
         data = []
         for report in reports:
             new_data = {
+                'id' : report.id,
                 'shipment' : report.shipment,
                 'route_id' : report.route_id,
                 'vehicle_id' : report.vehicle.code,
@@ -121,9 +128,10 @@ def current_reports():
     data = []
     for report in reports:
         new_data = {
+            'id' : report.id,
             'shipment' : report.shipment,
             'route_id' : report.route_id,
-            'route' : report.route,
+            'route' : report.route.description,
             'vehicle_id' : report.vehicle.code,
             'spbu_code' : report.spbu_code,
             'first_km' : report.first_km,
@@ -139,21 +147,43 @@ def current_reports():
         }
         data.append(new_data)
 
-    return jsonify(data)
+    return jsonify(data),200
     
 
 def create():
-    reports = request.get_json()
+    # reports = request.get_json()
 
-    data_requirement = ['vehicle_id','first_km', 'last_km','volume']
+    shipment = int(request.form.get("shipment"))
+    route_id = int(request.form.get("route_id"))
+    vehicle_id = int(request.form.get("vehicle_id"))
+    spbu_code = int(request.form.get("spbu_code"))
+    last_km = int(request.form.get("last_km"))
+    first_km = int(request.form.get("first_km"))
+    volume = int(request.form.get("volume"))
+    receipt = request.files.get("receipt")
+    created_by = int(request.form.get("created_by"))
 
-    if not reports or not all(key in reports for key in data_requirement):
-        return jsonify({"error": "tolong lengkapi data dulu kawann..."})
+    existing_reports = Reports.query.filter_by(shipment=shipment).first()
+    if existing_reports:
+        return jsonify({"error": "Nomor Shipment Sudah Ada, Tidak Boleh Sama"})
+
+
+    if not shipment or not route_id or not vehicle_id or not spbu_code or not first_km or not last_km or not volume or not receipt:
+        return jsonify({"error": "Data harus lengkap!"})
     
-    distance = reports["last_km"] - reports["first_km"]
-    ratio = distance / reports["volume"]
+    #buat kode upload gambar
+    if receipt and uploadconfig.allowed_file(receipt.filename):
+        uid = uuid.uuid4()
+        filename = secure_filename(receipt.filename)
+        renamefile = "reports"+str(uid)+filename
+
+        receipt.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
+
+    
+    distance = last_km - first_km
+    ratio = distance / volume
     #mengambil data kendaraan berdasarkan id kendaraan  yang diinput
-    vehicle = Vehicles.query.filter_by(id= reports["vehicle_id"]).first()
+    vehicle = Vehicles.query.filter_by(id= vehicle_id).first()
     #mengambil data tipe kendaraan berdasarkan tipe id
     vehicle_types = VehicleTypes.query.filter_by(id=vehicle.type_id).first()
     vehicle_types_encode = vehicle_types.type_encode
@@ -170,18 +200,18 @@ def create():
     created_at = datetime.now()
 
     data = Reports(
-       shipment = reports["shipment"],
-        route_id = reports["route_id"],
-        vehicle_id = reports["vehicle_id"],
-        spbu_code = reports["spbu_code"],
-        first_km = reports["first_km"],
-        last_km = reports["last_km"],
+       shipment = shipment,
+        route_id = route_id,
+        vehicle_id = vehicle_id,
+        spbu_code = spbu_code,
+        first_km = first_km,
+        last_km = last_km,
         distance = distance,
         ratio = ratio,
-        volume = reports["volume"],
+        volume = volume,
         status = prediction[0],
-        receipt = reports["receipt"],
-        created_by = reports["created_by"],
+        receipt = renamefile,
+        created_by = created_by,
         created_at = created_at
     )
 
@@ -195,15 +225,32 @@ def update(id):
     if not reports: 
         return jsonify({'message': 'Report not found'}), 404
     
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error" : "mohon lengkapi data terlebih dahulu!"})
     
-    distance = data["last_km"] - data["first_km"]
-    ratio = distance / data["volume"]
+    if not request.form.get("vehicle_id"):
+        return jsonify({"error":"Kode Kendaraan Tidak Boleh Kosong"})
+    elif not request.form.get("last_km") or not request.form.get("first_km"):
+        return jsonify({"error":"Kilometer Awal dan Akhir tidak boleh kosong"})
+    elif not request.form.get("volume"):
+        return jsonify({"error":"Volume Tidak Boleh Kosong"})
+    elif not request.files.get("receipt"):
+        return jsonify({"error": "Bukti Transaksi Tidak Boleh Kosong"})
+ 
+    shipment = int(request.form.get("shipment"))
+    route_id = int(request.form.get("route_id"))
+    vehicle_id = int(request.form.get("vehicle_id"))
+    spbu_code = int(request.form.get("spbu_code"))
+    last_km = int(request.form.get("last_km"))
+    first_km = int(request.form.get("first_km"))
+    volume = int(request.form.get("volume"))
+    receipt = request.files.get("receipt")
+
+    if not shipment and not route_id and not vehicle_id and not spbu_code and not last_km and not first_km and not volume and not receipt:
+        return jsonify({"error" : "Data Tidak Boleh Kosong!"})
+    
+    distance = last_km - first_km
+    ratio = distance / volume
     #mengambil data kendaraan berdasarkan id kendaraan  yang diinput
-    vehicle = Vehicles.query.filter_by(id= data["vehicle_id"]).first()
+    vehicle = Vehicles.query.filter_by(id= vehicle_id).first()
     #mengambil data tipe kendaraan berdasarkan tipe id
     vehicle_types = VehicleTypes.query.filter_by(id=vehicle.type_id).first()
     vehicle_types_encode = vehicle_types.type_encode
@@ -217,20 +264,26 @@ def update(id):
 
     prediction = model.predict(features)
     
-    if 'shipment' in data:
-        reports.shipment = data['shipment']
-    if 'route_id' in data:
-        reports.route_id = data['route_id']
-    if 'vehicle_id' in data:
-        reports.vehicle_id = data['vehicle_id']
-    if 'first_km' in data:
-        reports.first_km = data['first_km']
-    if 'last_km' in data:
-        reports.last_km = data['last_km']
-    if 'volume' in data:
-        reports.volume = data['volume']
-    if 'receipt' in data:
-        reports.receipt = data['receipt']  
+    if shipment:
+        reports.shipment = shipment
+    if route_id:
+        reports.route_id = route_id
+    if vehicle_id:
+        reports.vehicle_id = vehicle_id
+    if first_km:
+        reports.first_km = first_km
+    if last_km:
+        reports.last_km = last_km
+    if volume:
+        reports.volume = volume
+    if receipt and uploadconfig.allowed_file(receipt.filename):
+        uid = uuid.uuid4()
+        filename = secure_filename(receipt.filename)
+        renamefile = "reports"+str(uid)+filename
+
+        receipt.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))  
+        reports.receipt = renamefile
+
     reports.updated_at = datetime.now()
     reports.distance = distance
     reports.ratio = ratio
@@ -239,20 +292,23 @@ def update(id):
     db.session.commit()
 
     return jsonify({
-       'shipment' : reports.shipment,
-        'route_id' : reports.route_id,
-        'vehicle' : reports.vehicle.code,
-        'spbu_code' : reports.spbu_code,
-        'first_km' : reports.first_km,
-        'last_km' : reports.last_km,
-        'distance' : reports.distance,
-        'ratio' : reports.ratio,
-        'volume' : reports.volume,
-        'receipt' : reports.receipt,
-        'status' : reports.status,
-        'created_by' : reports.creator.name,
-        'created_at' : reports.created_at,
-        'updated_at' : reports.updated_at
+        'success' : 'Data Berhasil Diperbarui',
+        'data' : {
+            'shipment' : reports.shipment,
+            'route_id' : reports.route_id,
+            'vehicle' : reports.vehicle.code,
+            'spbu_code' : reports.spbu_code,
+            'first_km' : reports.first_km,
+            'last_km' : reports.last_km,
+            'distance' : reports.distance,
+            'ratio' : reports.ratio,
+            'volume' : reports.volume,
+            'receipt' : reports.receipt,
+            'status' : reports.status,
+            'created_by' : reports.creator.name,
+            'created_at' : reports.created_at,
+            'updated_at' : reports.updated_at
+        }
     }),200
 
 def delete(id):

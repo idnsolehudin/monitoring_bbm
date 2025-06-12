@@ -7,9 +7,9 @@ from app.controller import VehicleController
 from app.controller import ReportsController
 from flask import jsonify, request, Flask, send_from_directory
 from flask_jwt_extended import get_jwt_identity
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, JWTManager, jwt_required, get_jwt
 from config import Config
-
+from flask_cors import CORS, cross_origin
 # from flask_cors import CORS
 
 # app = Flask(__name__)
@@ -48,10 +48,12 @@ def vehicletypes():
     else:
         return VehicleTypesController.create()
     
-@app.route('/vehicletypes/<int:id>', methods=["PUT", "DELETE"])
+@app.route('/vehicletypes/<int:id>', methods=["PUT", "DELETE", "GET"])
 def vehicletypes_update(id):
     if request.method == "PUT":
         return VehicleTypesController.update(id)
+    elif request.method == "GET":
+        return VehicleTypesController.show(id)
     else:
         return VehicleTypesController.delete(id)
     
@@ -64,12 +66,13 @@ def vehicle():
         return VehicleController.create()
     
 @app.route('/vehicles/<int:id>', methods=['GET','PUT', 'DELETE'])
+@cross_origin(origins=["http://frontendskripsi.test:60"])
 def detail_vehicle(id):
     if request.method == 'GET':
         return VehicleController.detail(id)
     if request.method == 'PUT':
         return VehicleController.update(id)
-    else:
+    if request.method == 'DELETE':
         return VehicleController.delete(id)
     
 @app.route('/login', methods= ['POST'])
@@ -138,6 +141,26 @@ def uploads():
 @app.route('/files/<path:renamefile>')
 def uploaded_file(renamefile):
     return send_from_directory(app.config['UPLOAD_FOLDER'], renamefile)
+
+@app.route('/api/gambar/<filename>', methods = ['GET'])
+def gambar(filename):
+    return send_from_directory('static/upload', filename)
+
+
+# Simulasi blacklist token
+blacklist = set()
+jwt = JWTManager(app)
+@app.route('/auth/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    jti = get_jwt()["jti"]  # JWT ID
+    blacklist.add(jti)
+    return jsonify({"message": "Logout successful"}), 200
+
+# Tambahkan fungsi untuk mengecek apakah token diblacklist
+@jwt.token_in_blocklist_loader
+def check_if_token_in_blacklist(jwt_header, jwt_payload):
+    return jwt_payload["jti"] in blacklist
 
 if __name__ == '__main__':
     app.run(debug=True)

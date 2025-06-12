@@ -1,11 +1,18 @@
-from app import app, db, response
+from app import app, db, response, uploadconfig
 from app.model.vehicles import Vehicles
 from flask import jsonify, request, abort
 from datetime import datetime
+import pickle
+import numpy as np
+import os
+from werkzeug.utils import secure_filename
+import uuid
+
+
 
 def index():
     try:
-        data_vehicles = Vehicles.query.all()
+        data_vehicles = Vehicles.query.filter_by(deleted_at = None).all()
         data = []
         for vehicle in data_vehicles:
             new_data = {
@@ -13,7 +20,8 @@ def index():
                 'code' : vehicle.code,
                 'nopol' : vehicle.nopol,
                 'type' : vehicle.vehicle_type.tipe,
-                'merk' : vehicle.vehicle_type.merk
+                'merk' : vehicle.vehicle_type.merk,
+                'images' : vehicle.images
             }
             data.append(new_data)
 
@@ -28,12 +36,13 @@ def detail(id):
         abort(404)
 
     data_vehicle = {
+        'id' : data_detail.id,
         'code' : data_detail.code,
         'type_id' : data_detail.type_id,
         'type' : data_detail.vehicle_type.tipe,
         'merk' : data_detail.vehicle_type.merk,
         'nopol' : data_detail.nopol,
-        # 'images' : data_detail.images,
+        'images' : data_detail.images,
         'created_by' : data_detail.creator.name,
         'created_at' : data_detail.created_at,
         'updated_at' : data_detail.updated_at
@@ -42,30 +51,41 @@ def detail(id):
     return jsonify(data_vehicle)
 
 def create():
-    data = request.get_json()
-
-    if not data or not all(key in data for key in ['code','type_id','created_by','nopol']):
-        return jsonify({'error' : 'Mohon lengkapi data terlebih dahulu!'}), 400
-    
-    code = data.get('code')
-    type_id = data.get('type_id')
-    nopol = data.get('nopol')
-    created_by = data.get('created_by')
+    # data = request.get_json()
+    code = request.form.get("code")
+    type_id = int(request.form.get("type_id"))
+    nopol = request.form.get("nopol")
+    images = request.files.get("images")
+    created_by = int(request.form.get("created_by"))
     created_at = datetime.now()
+    updated_at = None
 
     # duplicate handler
-    existing_code = Vehicles.query.filter_by(code=code).first()
-    existing_nopol = Vehicles.query.filter_by(nopol=nopol).first()
+    existing_code = Vehicles.query.filter_by(code=code, deleted_at=None).first()
+    existing_nopol = Vehicles.query.filter_by(nopol=nopol, deleted_at=None).first()
     if existing_code:
         return jsonify({'error' : 'Kode Kendaraan Sudah ada!'}), 400
     
     if existing_nopol:
         return jsonify({'error' : 'Nomor Polisi Kendaraan Sudah ada!'}), 400
 
+    #empty data handler
+    if not code or not nopol or not images or not type_id or not created_by:
+        return jsonify({"error" : "Data Harus Lengkap, Mohon Lengkapi Data Terlebih Dahulu!"})  
+
+    #upload gambar
+    if images and uploadconfig.allowed_file(images.filename):
+        uid = uuid.uuid4()
+        filename = secure_filename(images.filename)
+        renamefile = "vehicle" + str(uid)+filename
+    
+        images.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
+    
     data_vehicle = Vehicles(
         code = code,
         type_id = type_id,
         nopol = nopol,
+        images = renamefile,
         created_by = created_by,
         created_at = created_at
     )
@@ -79,6 +99,7 @@ def create():
             'code' : data_vehicle.code,
             'type' : data_vehicle.vehicle_type.tipe,
             'merk' : data_vehicle.vehicle_type.merk,
+            'image' : data_vehicle.images,
             'nopol' : data_vehicle.nopol,
             'created_by' : data_vehicle.created_by,
             'created_at' : data_vehicle.created_at
@@ -89,23 +110,42 @@ def update(id):
     vehicles = Vehicles.query.get(id)
 
     if not vehicles:
-        return jsonify({"message" : "Data tidak ditemukan"}), 404
+        return jsonify({"error" : "Data tidak ditemukan"}), 404
     
-    data = request.get_json()
+    # data = request.get_json()
 
-    if not data:
-        return jsonify({'error' : 'Mohon lengkapi data dulu!!'}), 400
+    code = request.form.get("code")
+    type_id = int(request.form.get("type_id"))
+    nopol = request.form.get("nopol")
+    images = request.files.get("images")
+
+    if not code and not nopol and not images and not type_id:
+        return jsonify({"error" : "Data Harus Lengkap, Mohon Lengkapi Data Terlebih Dahulu!"})  
     
-    if 'code' in data:
-        vehicles.code = data['code']    
+    if code:
+        vehicles.code = code    
 
-    if 'type_id' in data:
-        vehicles.type_id = data['type_id']
-    if 'nopol' in data:
-        vehicles.nopol = data['nopol']
-    # vehicles.images = data['images']
-    if 'created_by' in data:
-        vehicles.created_by = data['created_by']
+    if type_id:
+        vehicles.type_id = type_id
+    if nopol:
+        vehicles.nopol = nopol
+    if images and uploadconfig.allowed_file(images.filename):
+        if vehicles.images:
+            old_images_path = os.path.join(app.config['UPLOAD_FOLDER'], vehicles.images)
+            if os.path.exists(old_images_path):
+                print(f"[DEBUG] File lama ditemukan: {old_images_path}, menghapus...")
+                os.remove(old_images_path)
+            else:
+                print(f"[DEBUG] File lama TIDAK ditemukan: {old_images_path}")
+
+        uid = uuid.uuid4()
+        filename = secure_filename(images.filename)
+        renamefile = f"vehicle_{str(uid)}_{filename}"
+
+        images.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
+        vehicles.images = renamefile
+
+    
     vehicles.updated_at = datetime.now()
 
     db.session.commit()
@@ -116,19 +156,15 @@ def update(id):
             'code' : vehicles.code,
             'type_id' : vehicles.vehicle_type.tipe,
             'nopol' : vehicles.nopol,
-            # 'images' : vehicles.images,
+            'images' : vehicles.images,
             'created_by' : vehicles.creator.name,
             'updated_at' : vehicles.updated_at
         }
     }), 200
 
 def delete(id):
-    vehicles = Vehicles.query.get(id)
-
-    if not vehicles:
-        abort(404)
-    
-    db.session.delete(vehicles)
+    vehicle = Vehicles.query.get(id)
+    vehicle.soft_delete()
     db.session.commit()
     
     return jsonify({"succes": "hapus data Sukses..."})

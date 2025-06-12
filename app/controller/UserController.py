@@ -54,7 +54,7 @@ def upload():
 
 def index():
     try:
-        users = Users.query.all()
+        users = Users.query.filter_by(deleted_at =None)
         data = []
         for user in users:
             user_data = {
@@ -62,6 +62,8 @@ def index():
                 'nik' : user.nik,
                 'name' : user.name,
                 'status' : user.status,
+                'phone' : user.phone,
+                'images' : user.image,
             }
             data.append(user_data)
         return jsonify(data)
@@ -92,10 +94,13 @@ def detail(id):
         abort(404)
 
     data_user = {
+        'id' : user_detail.id,
         'nik' : user_detail.nik,
         'name' : user_detail.name,
         # 'password' : user_detail.password,
         'status' : user_detail.status,
+        'images' : user_detail.image,
+        'phone' : user_detail.phone,
         'created_at' : user_detail.created_at,
         'updated_at' : user_detail.updated_at
     }
@@ -111,15 +116,16 @@ def create():
         nik = request.form.get("nik")
         status = request.form.get("status")
         password = request.form.get("password")
-        file = request.files.get('file')
+        phone = request.form.get("phone")
+        file = request.files.get('images')
 
         # memeriksa kelengkapan data
         if not name or not nik or not status or  not password:
             return jsonify({'error':'Data tidak lengkap!'}), 400
         
-        existing_nik = Users.query.filter_by(nik=nik).first()
+        existing_nik = Users.query.filter_by(nik=nik, deleted_at=None).first()
         if existing_nik:
-            return jsonify({"error": "NIK sudah ada!"})
+            return jsonify({"error": "NIK sudah ada!"}),400
 
         renamefile = None
         
@@ -136,10 +142,11 @@ def create():
             name = name,
             nik = nik,
             status = status,
+            phone = phone,
             image = renamefile,
             # password = data['password'],
             created_at = datetime.datetime.now(),
-            updated_at = "Null"
+            updated_at = None
         )
         # menyimpan objek ke database
         new_user.setPassword(password)
@@ -152,7 +159,9 @@ def create():
                 'name' : new_user.name,
                 'nik' : new_user.nik,
                 'status' : new_user.status,
-                'created_at' : new_user.created_at
+                'phone' : new_user.phone,
+                'created_at' : new_user.created_at,
+                'image' : new_user.image
             }
         }), 201
 
@@ -170,11 +179,12 @@ def update(id):
     nik = request.form.get("nik")
     name = request.form.get("name")
     status = request.form.get("status")
+    phone = request.form.get("phone")
     password = request.form.get("password")
-    file = request.files.get("file")
+    file = request.files.get("images")
 
-    if not nik and not name and not status and not password and not file:
-        return jsonify({"error": "lengkapi data terlebih dahulu"})
+    if not nik and not name and not status and not password:
+        return jsonify({"error": "lengkapi data terlebih dahulu"}),404
     
     if nik:
         users.nik = nik
@@ -182,6 +192,8 @@ def update(id):
         users.name = name
     if status:
         users.status = status
+    if phone:
+        users.phone = phone
     if password:
         users.password = password
     if file and uploadconfig.allowed_file(file.filename):
@@ -197,12 +209,13 @@ def update(id):
     db.session.commit()
 
     return jsonify({
-        'message': 'Data berhasil diperbarui',
+        'success': 'Data berhasil diperbarui',
         'data' : 
                 {
                     'name' : users.name,
                     'nik' : users.nik,
                     'status' : users.status,
+                    'phone' : users.phone,
                     'images' : users.image,
                     'updated_at' : users.updated_at
                 }
@@ -214,7 +227,7 @@ def delete(id):
     if not users:
         abort(404)
 
-    db.session.delete(users)
+    users.soft_delete()
     db.session.commit()
 
     return jsonify({"message": "Data berhasil dihapus"}), 200
@@ -225,7 +238,9 @@ def singleObject(data):
         'nik' : data.nik,
         'name' : data.name,
         'status' : data.status,
-        'password' : data.password
+        'phone' : data.phone,
+        'password' : data.password,
+        'image' : data.image
     }
 
     return data
@@ -235,7 +250,7 @@ def login():
         nik = request.form.get('nik')
         password = request.form.get('password')
         
-        user = Users.query.filter_by(nik=nik).first()
+        user = Users.query.filter_by(nik=nik, deleted_at=None).first()
         pass_key = Users.query.filter_by(password=password).first()
 
         if not nik and not password:

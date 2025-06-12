@@ -6,7 +6,7 @@ from datetime import datetime
 
 def index():
     try:
-        routes = Routes.query.all()
+        routes = Routes.query.filter_by(deleted_at = None).all()
         data = []
         for route in routes:
             routes_data = {
@@ -41,17 +41,23 @@ def detail(id):
     return jsonify(data_routes)
 
 def create():
-    data = request.get_json()
+    code = request.form.get("code")
+    description = request.form.get("description")
+    distance = request.form.get("distance")
+    created_id = request.form.get("created_id")
 
-    required_fields = ['code', 'description', 'distance', 'created_id']
-    if not data or not all(key in data for key in required_fields):
+    existing_code = Routes.query.filter_by(code=code, deleted_at=None).first()
+    if  existing_code:
+        return jsonify({'error':'Kode sudah ada'}),400
+    
+    if not code or not description or not distance or not created_id:
         return jsonify({'error': 'Invalid data'}), 400
 
     new_route = Routes(
-        code=data['code'],
-        description=data['description'],
-        distance=data['distance'],
-        created_id=data['created_id'],
+        code=code,
+        description=description,
+        distance=distance,
+        created_id=created_id,
         created_at = datetime.now()
     )
 
@@ -69,15 +75,17 @@ def create():
 def update(id):
     routes = Routes.query.get(id)
 
-    data = request.get_json()
+    code = request.form.get("code")
+    description = request.form.get("description")
+    distance = request.form.get("distance")
+    
 
-    if not data or not all(key in data for key in['code', 'description','distance','created_id']):
+    if not code or not description or not distance:
         return jsonify({"error": "Data Harus Lengkap!"}), 400
     
-    routes.code = data['code'],
-    routes.description = data['description'],
-    routes.distance = data['distance'],
-    routes.created_id = data['created_id'],
+    routes.code = code
+    routes.description = description
+    routes.distance = distance
     routes.updated_at = datetime.now()
 
     db.session.commit()
@@ -96,7 +104,7 @@ def delete(id):
     if not routes:
         abort(404)
 
-    db.session.delete(routes)
+    routes.soft_delete()
     db.session.commit()
 
     return jsonify({"message" : "berhasil hapus data"})

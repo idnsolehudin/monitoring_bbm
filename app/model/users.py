@@ -2,15 +2,17 @@ from app import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+from app.controller.SoftDeleteMixin import SoftDeleteMixin
 
-class Users(db.Model):
+class Users(db.Model, SoftDeleteMixin):
     id = db.Column(db.Integer, primary_key=True, autoincrement = True)
-    nik = db.Column(db.Integer, index=True, unique=True, nullable=False)
+    nik = db.Column(db.Integer, unique=True, nullable=False)
     name = db.Column(db.String(50), nullable=False)
     status = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    created_at =db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    phone = db.Column(db.String(35), nullable=True)
+    created_at =db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True)
     image = db.Column(db.String(255))
 
     routes = db.relationship('Routes', backref='creator', lazy=True)
