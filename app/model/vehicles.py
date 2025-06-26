@@ -8,6 +8,7 @@ class Vehicles(db.Model, SoftDeleteMixin):
     code = db.Column(db.String(50), unique=True, nullable=False)
     nopol = db.Column(db.String(50), unique=True, nullable=False)
     images = db.Column(db.String(255))
+    first_km = db.Column(db.Integer, nullable=False)
     type_id = db.Column(db.Integer, db.ForeignKey('vehicle_types.id'), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey(Users.id), nullable=False)
     created_at = db.Column(db.DateTime, nullable=True)

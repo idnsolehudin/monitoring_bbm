@@ -42,6 +42,7 @@ def detail(id):
         'type' : data_detail.vehicle_type.tipe,
         'merk' : data_detail.vehicle_type.merk,
         'nopol' : data_detail.nopol,
+        'first_km' : data_detail.first_km,
         'images' : data_detail.images,
         'created_by' : data_detail.creator.name,
         'created_at' : data_detail.created_at,
@@ -54,6 +55,7 @@ def create():
     # data = request.get_json()
     code = request.form.get("code")
     type_id = int(request.form.get("type_id"))
+    first_km = int(request.form.get("first_km"))
     nopol = request.form.get("nopol")
     images = request.files.get("images")
     created_by = int(request.form.get("created_by"))
@@ -70,14 +72,14 @@ def create():
         return jsonify({'error' : 'Nomor Polisi Kendaraan Sudah ada!'}), 400
 
     #empty data handler
-    if not code or not nopol or not images or not type_id or not created_by:
+    if not code or not nopol or not images or not type_id or not created_by or not first_km:
         return jsonify({"error" : "Data Harus Lengkap, Mohon Lengkapi Data Terlebih Dahulu!"})  
 
     #upload gambar
     if images and uploadconfig.allowed_file(images.filename):
         uid = uuid.uuid4()
         filename = secure_filename(images.filename)
-        renamefile = "vehicle" + str(uid)+filename
+        renamefile = "vehicle"+str(uid)+filename
     
         images.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
     
@@ -85,6 +87,7 @@ def create():
         code = code,
         type_id = type_id,
         nopol = nopol,
+        first_km = first_km,
         images = renamefile,
         created_by = created_by,
         created_at = created_at
@@ -101,6 +104,7 @@ def create():
             'merk' : data_vehicle.vehicle_type.merk,
             'image' : data_vehicle.images,
             'nopol' : data_vehicle.nopol,
+            'first_km' : data_vehicle.first_km,
             'created_by' : data_vehicle.created_by,
             'created_at' : data_vehicle.created_at
         }
@@ -116,10 +120,11 @@ def update(id):
 
     code = request.form.get("code")
     type_id = int(request.form.get("type_id"))
+    first_km = int(request.form.get("first_km"))
     nopol = request.form.get("nopol")
     images = request.files.get("images")
 
-    if not code and not nopol and not images and not type_id:
+    if not code and not nopol and not images and not type_id and not first_km:
         return jsonify({"error" : "Data Harus Lengkap, Mohon Lengkapi Data Terlebih Dahulu!"})  
     
     if code:
@@ -129,6 +134,8 @@ def update(id):
         vehicles.type_id = type_id
     if nopol:
         vehicles.nopol = nopol
+    if first_km:
+        vehicles.first_km = first_km
     if images and uploadconfig.allowed_file(images.filename):
         if vehicles.images:
             old_images_path = os.path.join(app.config['UPLOAD_FOLDER'], vehicles.images)
@@ -156,6 +163,7 @@ def update(id):
             'code' : vehicles.code,
             'type_id' : vehicles.vehicle_type.tipe,
             'nopol' : vehicles.nopol,
+            'first_km' : vehicles.first_km,
             'images' : vehicles.images,
             'created_by' : vehicles.creator.name,
             'updated_at' : vehicles.updated_at

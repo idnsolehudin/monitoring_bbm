@@ -17,40 +17,40 @@ load_dotenv()
 app = Flask(__name__)
 app.config.from_object(Config)
 
-def upload():
-    try:
-        title = request.form.get('title')
+# def upload():
+#     try:
+#         title = request.form.get('title')
 
-        if 'file' not in request.files:
-            return response.badRequest([],'File tidak tersedia')
-        file = request.files['file']
+#         if 'file' not in request.files:
+#             return response.badRequest([],'File tidak tersedia')
+#         file = request.files['file']
 
-        if file.filename == '':
-            return response.badRequest([],'File tidak tersedia')
+#         if file.filename == '':
+#             return response.badRequest([],'File tidak tersedia')
         
-        if file and uploadconfig.allowed_file(file.filename):
-            uid = uuid.uuid4()
-            filename = secure_filename(file.filename)
-            renamefile = "img"+str(uid)+filename
+#         if file and uploadconfig.allowed_file(file.filename):
+#             uid = uuid.uuid4()
+#             filename = secure_filename(file.filename)
+#             renamefile = "img"+str(uid)+filename
 
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
+#             file.save(os.path.join(app.config['UPLOAD_FOLDER'], renamefile))
 
-            uploads = Images(title=title, pathname=renamefile)
-            db.session.add(uploads)
-            db.session.commit()
+#             uploads = Images(title=title, pathname=renamefile)
+#             db.session.add(uploads)
+#             db.session.commit()
             
-            return response.success(
-                {
-                    'title' : title,
-                    'pathname' : renamefile
-                },
-                "Sukses mengupload file"
-            )
+#             return response.success(
+#                 {
+#                     'title' : title,
+#                     'pathname' : renamefile
+#                 },
+#                 "Sukses mengupload file"
+#             )
             
-        else:
-            return response.badRequest([],'File tidak diizinkan')
-    except Exception as e:
-        print(e)
+#         else:
+#             return response.badRequest([],'File tidak diizinkan')
+#     except Exception as e:
+#         print(e)
 
 def index():
     try:
@@ -97,7 +97,6 @@ def detail(id):
         'id' : user_detail.id,
         'nik' : user_detail.nik,
         'name' : user_detail.name,
-        # 'password' : user_detail.password,
         'status' : user_detail.status,
         'images' : user_detail.image,
         'phone' : user_detail.phone,
@@ -195,7 +194,7 @@ def update(id):
     if phone:
         users.phone = phone
     if password:
-        users.password = password
+        users.setPassword(password)
     if file and uploadconfig.allowed_file(file.filename):
         uid = uuid.uuid4()
         filename = secure_filename(file.filename)
@@ -251,7 +250,7 @@ def login():
         password = request.form.get('password')
         
         user = Users.query.filter_by(nik=nik, deleted_at=None).first()
-        pass_key = Users.query.filter_by(password=password).first()
+        # pass_key = Users.query.filter_by(password=password).first()
 
         if not nik and not password:
             return response.badRequest([],"NIK dan Password tidak boleh kosong")
@@ -265,7 +264,7 @@ def login():
         if not user:
             return response.badRequest([], "NIK tidak terdaftar")
         
-        if not pass_key:
+        if not user.checkPassword(password):
             return response.badRequest([], "Password salah!")
         
         data = singleObject(user)

@@ -11,6 +11,7 @@ from flask_jwt_extended import jwt_required, JWTManager, jwt_required, get_jwt
 from config import Config
 from flask_cors import CORS, cross_origin
 # from flask_cors import CORS
+application = app
 
 # app = Flask(__name__)
 # CORS(app)
@@ -124,6 +125,11 @@ def detail_reports(id):
     else:
         return ReportsController.delete(id)
     
+@app.route('/user_reports/<int:id>', methods=['GET'])
+@jwt_required()
+def user_reports(id):
+    return ReportsController.user_reports(id)
+
 @app.route('/current_reports', methods=['GET'])
 @jwt_required()
 def currentreports():

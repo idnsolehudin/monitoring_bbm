@@ -8,7 +8,7 @@ from app.controller.SoftDeleteMixin import SoftDeleteMixin
 
 class Reports(db.Model, SoftDeleteMixin):
     id =  db.Column(db.Integer, primary_key=True, autoincrement=True)
-    shipment = db.Column(db.BigInteger, unique=True, nullable=False)
+    shipment = db.Column(db.BigInteger, nullable=False)
     route_id = db.Column(db.Integer,db.ForeignKey(Routes.id), nullable=False)
     vehicle_id = db.Column(db.Integer, db.ForeignKey(Vehicles.id), nullable=False)
     spbu_code = db.Column(db.BigInteger, nullable=False)
@@ -18,6 +18,10 @@ class Reports(db.Model, SoftDeleteMixin):
     ratio = db.Column(db.Integer, nullable=False)
     volume = db.Column(db.Integer, nullable=False)
     receipt = db.Column(db.String(255), nullable=False)
+    odometer = db.Column(db.String(255), nullable=False)
+    dispenser = db.Column(db.String(255), nullable=False)
+    fulfillment = db.Column(db.String(255), nullable=False)
+    similarity = db.Column(db.Float, nullable=False)
     status = db.Column(db.Integer, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey(Users.id), nullable=False)
     created_at = db.Column(db.DateTime, nullable=True)
