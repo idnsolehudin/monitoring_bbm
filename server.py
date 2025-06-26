@@ -11,7 +11,6 @@ from flask_jwt_extended import jwt_required, JWTManager, jwt_required, get_jwt
 from config import Config
 from flask_cors import CORS, cross_origin
 # from flask_cors import CORS
-application = app
 
 # app = Flask(__name__)
 # CORS(app)
@@ -169,4 +168,4 @@ def check_if_token_in_blacklist(jwt_header, jwt_payload):
     return jwt_payload["jti"] in blacklist
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False, host="0.0.0.0")
